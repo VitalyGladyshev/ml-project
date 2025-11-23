@@ -9,6 +9,11 @@ from sklearn.preprocessing import StandardScaler
 
 # Импорты с обработкой ошибок
 try:
+    from src.model_training_simple import train_models_without_mlflow
+except ImportError:
+    train_models_without_mlflow = None
+
+try:
     from src.model_training import train_and_evaluate_models
 except ImportError as e:
     print(f"Ошибка импорта model_training: {str(e)}")
@@ -216,15 +221,35 @@ def main():
         print("\n" + "=" * 60)
         print("=== Обучение моделей с MLflow ===")
         try:
+            # if mlflow_ready:
+            #     best_model_info = train_and_evaluate_models(
+            #         X_train, X_test, y_train, y_test, feature_names
+            #     )
+            #     print("Обучение моделей с MLflow завершено успешно")
+            # else:
+            #     print("MLflow недоступен. Обучение моделей без логирования...")
+            #     # Здесь можно добавить обучение без MLflow
+            #     best_model_info = None
+
             if mlflow_ready:
-                best_model_info = train_and_evaluate_models(
-                    X_train, X_test, y_train, y_test, feature_names
-                )
-                print("Обучение моделей с MLflow завершено успешно")
+                try:
+                    best_model_info = train_and_evaluate_models(
+                        X_train, X_test, y_train, y_test, feature_names
+                    )
+                except Exception as e:
+                    print(f"Ошибка при обучении с MLflow: {str(e)}")
+                    print("Переключаемся на обучение без MLflow...")
+                    if train_models_without_mlflow:
+                        best_model_info = train_models_without_mlflow(X_train, X_test, y_train, y_test, feature_names)
+                    else:
+                        best_model_info = None
             else:
                 print("MLflow недоступен. Обучение моделей без логирования...")
-                # Здесь можно добавить обучение без MLflow
-                best_model_info = None
+                if train_models_without_mlflow:
+                    best_model_info = train_models_without_mlflow(X_train, X_test, y_train, y_test, feature_names)
+                else:
+                    best_model_info = None
+
         except Exception as e:
             print(f"Ошибка при обучении моделей: {str(e)}")
             best_model_info = None
