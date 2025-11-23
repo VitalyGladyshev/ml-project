@@ -1,0 +1,42 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PYTHON_VERSION: "3.9"
+  MLFLOW_TRACKING_URI: "http://mlflow-server:5000"
+
+test:
+  stage: test
+  image: python:$PYTHON_VERSION
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest
+    - pytest tests/
+  artifacts:
+    paths:
+      - reports/deepchecks/
+      - reports/evidently/
+
+build:
+  stage: build
+  image: python:$PYTHON_VERSION
+  script:
+    - pip install -r requirements.txt
+    - mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri ./mlruns --default-artifact-root ./mlruns &
+    - sleep 10
+    - python src/main.py
+  artifacts:
+    paths:
+      - models/
+      - mlruns/
+      - reports/
+
+deploy:
+  stage: deploy
+  image: python:$PYTHON_VERSION
+  script:
+    - echo "Deploying ML models..."
+  only:
+    - main

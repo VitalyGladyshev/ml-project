@@ -1,0 +1,48 @@
+name: ML Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pytest
+        
+    - name: Set up MLflow
+      run: |
+        mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri ./mlruns --default-artifact-root ./mlruns &
+        sleep 10  # Даем время серверу запуститься
+        
+    - name: Run data validation
+      run: |
+        python -c "from src.data_validation import validate_data_with_deepchecks; import pandas as pd; X = pd.read_csv('data/ikm_start_3.csv').drop(['стп_ХОБЛ'], axis=1); y = pd.read_csv('data/ikm_start_3.csv')['стп_ХОБЛ']; validate_data_with_deepchecks(X, y)"
+        
+    - name: Run ML pipeline
+      run: |
+        python src/main.py
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ml-artifacts
+        path: |
+          models/
+          reports/
+          mlruns/
+          
